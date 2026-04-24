@@ -1,6 +1,8 @@
 package com.demo.rtsp2hls.controller;
 
 import com.demo.rtsp2hls.model.OpenStreamRequest;
+import com.demo.rtsp2hls.model.RtspProbeRequest;
+import com.demo.rtsp2hls.model.RtspProbeResponse;
 import com.demo.rtsp2hls.model.StreamResponse;
 import com.demo.rtsp2hls.service.StreamService;
 import jakarta.validation.Valid;
@@ -26,6 +28,11 @@ public class StreamController {
     @PostMapping("/open")
     public StreamResponse open(@Valid @RequestBody OpenStreamRequest request) {
         return streamService.open(request.rtspUrl());
+    }
+
+    @PostMapping("/probe")
+    public RtspProbeResponse probe(@Valid @RequestBody RtspProbeRequest request) {
+        return streamService.probe(request.rtspUrl());
     }
 
     @PostMapping("/{streamId}/heartbeat")

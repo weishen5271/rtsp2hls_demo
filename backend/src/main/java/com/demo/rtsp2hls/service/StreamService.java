@@ -1,14 +1,18 @@
 package com.demo.rtsp2hls.service;
 
 import com.demo.rtsp2hls.config.StreamProperties;
+import com.demo.rtsp2hls.model.RtspProbeResponse;
 import com.demo.rtsp2hls.model.StreamProcessHolder;
 import com.demo.rtsp2hls.model.StreamResponse;
+import java.io.BufferedReader;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -27,6 +31,7 @@ import org.springframework.stereotype.Service;
 public class StreamService {
 
     private static final Logger log = LoggerFactory.getLogger(StreamService.class);
+    private static final Duration RTSP_PROBE_TIMEOUT = Duration.ofSeconds(8);
 
     private final StreamProperties streamProperties;
     private final FfmpegExecutableResolver ffmpegExecutableResolver;
@@ -90,6 +95,60 @@ public class StreamService {
         } catch (RuntimeException ex) {
             forceClose(streamId);
             throw ex;
+        }
+    }
+
+    public RtspProbeResponse probe(String rtspUrl) {
+        String normalizedUrl = normalizeRtspUrl(rtspUrl);
+        Instant checkedAt = Instant.now();
+        long startedAt = System.nanoTime();
+        List<String> command = buildProbeCommand(normalizedUrl);
+
+        try {
+            Process process = new ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .start();
+
+            boolean finished = process.waitFor(RTSP_PROBE_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+            long elapsedMillis = Duration.ofNanos(System.nanoTime() - startedAt).toMillis();
+
+            if (!finished) {
+                process.destroyForcibly();
+                return new RtspProbeResponse(
+                    normalizedUrl,
+                    false,
+                    "OFFLINE",
+                    checkedAt,
+                    elapsedMillis,
+                    "RTSP 探测超时，未在 " + RTSP_PROBE_TIMEOUT.toSeconds() + " 秒内拿到视频帧"
+                );
+            }
+
+            String output = readProcessOutput(process);
+            if (process.exitValue() == 0) {
+                return new RtspProbeResponse(
+                    normalizedUrl,
+                    true,
+                    "ONLINE",
+                    checkedAt,
+                    elapsedMillis,
+                    "RTSP 流在线，可正常读取视频帧"
+                );
+            }
+
+            return new RtspProbeResponse(
+                normalizedUrl,
+                false,
+                "OFFLINE",
+                checkedAt,
+                elapsedMillis,
+                buildProbeFailureMessage(output)
+            );
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("RTSP 在线探测被中断", ex);
+        } catch (IOException ex) {
+            throw new IllegalStateException("启动 RTSP 在线探测失败：" + ex.getMessage(), ex);
         }
     }
 
@@ -195,6 +254,32 @@ public class StreamService {
             throw new IllegalArgumentException("当前仅支持 rtsp:// 开头的地址");
         }
         return normalizedUrl;
+    }
+
+    private List<String> buildProbeCommand(String rtspUrl) {
+        List<String> command = new ArrayList<>();
+        command.add(ffmpegExecutableResolver.resolveExecutable());
+        command.add("-hide_banner");
+        command.add("-loglevel");
+        command.add("error");
+        command.add("-nostdin");
+        command.add("-rtsp_transport");
+        command.add("tcp");
+        command.add("-analyzeduration");
+        command.add("1000000");
+        command.add("-probesize");
+        command.add("1000000");
+        command.add("-i");
+        command.add(rtspUrl);
+        command.add("-map");
+        command.add("0:v:0");
+        command.add("-frames:v");
+        command.add("1");
+        command.add("-an");
+        command.add("-f");
+        command.add("null");
+        command.add("-");
+        return command;
     }
 
     private StreamProcessHolder getExistingHolder(String streamId) {
@@ -325,6 +410,31 @@ public class StreamService {
         } catch (IOException ex) {
             return "读取 ffmpeg 日志失败：" + ex.getMessage();
         }
+    }
+
+    private String readProcessOutput(Process process) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+            StringBuilder output = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (!output.isEmpty()) {
+                    output.append(" | ");
+                }
+                output.append(line);
+            }
+            return output.toString();
+        }
+    }
+
+    private String buildProbeFailureMessage(String output) {
+        if (output == null || output.isBlank()) {
+            return "RTSP 流离线或不可访问";
+        }
+        String normalized = output.replaceAll("\\s+", " ").trim();
+        if (normalized.length() > 180) {
+            normalized = normalized.substring(0, 180) + "...";
+        }
+        return "RTSP 流离线或不可访问：" + normalized;
     }
 
     private Path resolveOutputRoot() {

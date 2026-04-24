@@ -138,6 +138,7 @@ cd backend && mvn package
 | 方法 | 路径 | 用途 |
 |------|------|------|
 | `POST` | `/api/streams/open` | 开启一路 RTSP→HLS 转流 |
+| `POST` | `/api/streams/probe` | 直接探测 RTSP 源是否在线 |
 | `POST` | `/api/streams/{id}/heartbeat` | 续租（建议 10–15s 一次） |
 | `POST` | `/api/streams/{id}/release` | 观看者 -1，进入空闲 |
 | `DELETE` | `/api/streams/{id}` | 立即关闭 |

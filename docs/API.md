@@ -74,7 +74,52 @@ POST /api/streams/open
 
 ---
 
-### 2. 心跳续租
+### 2. 直接探测 RTSP 源是否在线
+
+```
+POST /api/streams/probe
+```
+
+直接对传入的 `rtspUrl` 发起短连接探测，判断是否能在限定时间内读取到视频帧。
+
+**请求体**
+
+```json
+{ "rtspUrl": "rtsp://user:pass@192.168.1.10:554/Streaming/Channels/101" }
+```
+
+**响应 200**
+
+```json
+{
+  "rtspUrl": "rtsp://user:pass@192.168.1.10:554/Streaming/Channels/101",
+  "online": true,
+  "status": "ONLINE",
+  "checkedAt": "2026-04-24T03:38:10.000Z",
+  "elapsedMillis": 824,
+  "message": "RTSP 流在线，可正常读取视频帧"
+}
+```
+
+**离线示例**
+
+```json
+{
+  "rtspUrl": "rtsp://user:pass@192.168.1.10:554/Streaming/Channels/101",
+  "online": false,
+  "status": "OFFLINE",
+  "checkedAt": "2026-04-24T03:38:10.000Z",
+  "elapsedMillis": 8007,
+  "message": "RTSP 探测超时，未在 8 秒内拿到视频帧"
+}
+```
+
+**错误**
+- 400 `"当前仅支持 rtsp:// 开头的地址"` / `"RTSP 地址不能为空"`
+
+---
+
+### 3. 心跳续租
 
 ```
 POST /api/streams/{streamId}/heartbeat
@@ -92,7 +137,7 @@ POST /api/streams/{streamId}/heartbeat
 
 ---
 
-### 3. 释放观看者
+### 4. 释放观看者
 
 ```
 POST /api/streams/{streamId}/release
@@ -108,7 +153,7 @@ POST /api/streams/{streamId}/release
 
 ---
 
-### 4. 强制关闭
+### 5. 强制关闭
 
 ```
 DELETE /api/streams/{streamId}
@@ -120,7 +165,7 @@ DELETE /api/streams/{streamId}
 
 ---
 
-### 5. 查询单条流详情
+### 6. 查询单条流详情
 
 ```
 GET /api/streams/{streamId}
@@ -133,7 +178,7 @@ GET /api/streams/{streamId}
 
 ---
 
-### 6. 列出全部流
+### 7. 列出全部流
 
 ```
 GET /api/streams
