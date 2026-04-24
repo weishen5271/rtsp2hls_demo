@@ -1,0 +1,7 @@
+server:
+  port: 18080
+  address: 127.0.0.1
+
+app:
+  stream:
+    output-dir: ${user.home}/AppData/Local/RtspHlsLocalPlugin/hls

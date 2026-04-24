@@ -1,0 +1,19 @@
+server:
+  port: 9000
+
+spring:
+  mvc:
+    static-path-pattern: /**
+
+app:
+  stream:
+    ffmpeg-executable: ${FFMPEG_PATH:ffmpeg}
+    bundled-ffmpeg-root: ffmpeg
+    bundled-ffmpeg-output-dir: runtime/bin
+    output-dir: runtime/hls
+    hls-time-seconds: 2
+    hls-list-size: 6
+    startup-timeout-seconds: 15
+    heartbeat-interval-seconds: 15
+    idle-timeout-seconds: 30
+    cleanup-interval-seconds: 15

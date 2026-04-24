@@ -1,0 +1,22 @@
+{
+  "name": "rtsp2hls-demo",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:frontend": "vite",
+    "dev:plugin": "node scripts/rtsp-hls-plugin.mjs",
+    "build:plugin-installer": "powershell -ExecutionPolicy Bypass -File scripts/build-local-plugin.ps1",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "hls.js": "^1.5.13",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^6.3.5"
+  }
+}
